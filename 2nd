@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VotePulse - MLYSA Election Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+body{margin:0;background:#f4f6fb;font-family:Arial,sans-serif;color:#17233e}
+header{background:linear-gradient(120deg,#0d1a38,#164e9a);color:white;padding:28px}
+.gold{color:#f4c542}
+.card{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 5px 20px #10234b10}
+button{padding:11px 16px;border:0;border-radius:8px;background:#164e9a;color:white;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.4}
+input{padding:12px;border:1px solid #cbd5e1;border-radius:8px;width:100%;box-sizing:border-box;margin:8px 0}
+nav{background:white;padding:12px;display:flex;gap:10px;flex-wrap:wrap}
+nav button{background:#e8eef8;color:#173c78}
+nav button.active{background:#173c78;color:white}
+.ballot{background:#fbf9f4;border:4px solid #111827;color:#111827}
+.ballot-head,.ballot-foot{background:#f4efe4;padding:16px;text-align:center}
+.ballot-row{display:grid;grid-template-columns:55% 20% 25%;border-top:2px solid #111827;min-height:100px}
+.ballot-row>div{padding:10px;border-right:2px solid #111827;display:flex;align-items:center;justify-content:center}
+.ballot-row>div:first-child{justify-content:flex-start}
+.stamp{width:48px;height:48px;border:3px solid #111827;background:white;color:#111827;font-size:30px}
+.stamp.selected{background:#fff1b8}
+.hidden{display:none!important}
+section{max-width:1100px;margin:25px auto;padding:0 15px}
+footer{background:#0d1a38;color:white;text-align:center;padding:25px;margin-top:40px}
+.notice{padding:12px;background:#eaf7ef;color:#176638;border-radius:8px;margin-top:12px}
+.error{background:#fff0f0;color:#b42332}
+@media(max-width:600px){.ballot-row{font-size:12px}.stamp{width:35px;height:35px;font-size:23px}}
+</style>
+</head>
+<body>
+
+<header>
+<div style="max-width:1100px;margin:auto">
+<div class="gold" style="font-size:12px;font-weight:bold">LEMBAGA PILIHAN RAYA MLYSA</div>
+<h1 style="font-size:32px;margin:10px 0">VotePulse <span class="gold">·</span> Malaysia Election</h1>
+<p>Pilihan Raya Umum Rasmi · Roblox Identity Verification · Borang 8 Ballot Paper</p>
+<div style="display:flex;gap:25px;flex-wrap:wrap;margin-top:20px">
+<div><small>POLL CLOSING COUNTDOWN</small><h2 id="countdown">Loading...</h2><small>PRU 2026</small></div>
+<div><small>BALLOTS CAST</small><h2 id="totalVotes">0</h2></div>
+<div><small>PARTIES</small><h2 id="totalParties">3</h2></div>
+</div>
+</div>
+</header>
+
+<nav>
+<button class="active" onclick="showPage('voter',this)">Voter Portal (Borang 8)</button>
+<button onclick="showPage('manifesto',this)">Manifesto Comparising</button>
+<button onclick="showPage('admin',this)">Admin Portal (Staff Only)</button>
+</nav>
+
+<section id="voter">
+<h2>Voter Portal · Borang 8</h2>
+<div class="card" style="margin-bottom:20px">
+<h3>Roblox Identity Verification</h3>
+<input id="username" placeholder="Enter Roblox Username">
+<button onclick="verifyUser()">Verify Username</button>
+<div id="verification"></div>
+</div>
+
+<div class="ballot">
+<div class="ballot-head">
+<p>LEMBAGA PILIHAN RAYA MLYSA</p>
+<p>Series Ballot: <b id="auditToken"></b></p>
+<h2>BORANG 8 - Kertas Undi</h2>
+<p id="ballotUsername">Username Roblox: Belum disahkan</p>
+<h3>SILA PANGKAH SATU SAHAJA</h3>
+</div>
+<div class="ballot-row" style="font-weight:bold;background:#f4efe4">
+<div>NAMA PARTI</div><div>LOGO</div><div>[ X ]</div>
+</div>
+<div id="ballotParties"></div>
+<div class="ballot-foot">
+<b>SPR MLYSA · COP RASMI · 2026</b>
+<p>Lembaga Pilihan Raya MLYSA · Borang 8 (Peraturan 19)</p>
+</div>
+</div>
+
+<div class="card" style="margin-top:20px">
+<h3>Masukkan Kertas Undi Ke Dalam Peti Undi</h3>
+<button id="submitVote" disabled onclick="submitVote()">Submit Official Ballot</button>
+<div id="voteMessage"></div>
+<div id="receipt" class="hidden">
+<hr>
+<h3>Resit Undi Rasmi · Ballot Receipt</h3>
+<p id="receiptDetails"></p>
+<button onclick="window.print()">Print Receipt</button>
+</div>
+</div>
+</section>
+
+<section id="manifesto" class="hidden">
+<h2>Manifesto Comparising</h2>
+<p>Review the manifesto of contesting parties.</p>
+<div id="manifestoList" class="grid"></div>
+<button onclick="showPage('voter')">Pergi Ke Borang 8 (Undi)</button>
+</section>
+
+<section id="admin" class="hidden">
+<h2>Admin Portal · Staff Only</h2>
+<div id="login">
+<div class="card">
+<label>Staff Email</label>
+<input id="adminEmail" type="email" placeholder="Staff email">
+<label>Security Passcode</label>
+<input id="adminPassword" type="password" placeholder="Passcode">
+<button onclick="adminLogin()">Login</button>
+<div id="loginMessage"></div>
+</div>
+</div>
+<div id="dashboard" class="hidden">
+<div class="card">
+<h3>Live Vote Tally & Results</h3>
+<div id="results"></div>
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportJSON()">Export JSON</button>
+</div>
+<div class="card" style="margin-top:20px">
+<h3>Cast Ballots Audit Trail</h3>
+<div id="auditTrail"></div>
+</div>
+<div class="card" style="margin-top:20px">
+<h3>Election Settings</h3>
+<input type="datetime-local" id="closingDate">
+<button onclick="saveClosing()">Save Countdown</button>
+</div>
+<div class="card" style="margin-top:20px">
+<h3>Manage Parties</h3>
+<input id="partyName" placeholder="Party Name">
+<input id="partyAcronym" placeholder="Acronym">
+<input id="partySlogan" placeholder="Party Slogan">
+<button onclick="addParty()">Add Party</button>
+<div id="manageParties"></div>
+</div>
+</div>
+</section>
+
+<footer>
+<b>VotePulse</b>
+<p>Lembaga Pilihan Raya MLYSA</p>
+<p>Official Electoral Commission Demo</p>
+<p>Borang 8 Digital Ballot</p>
+<p>© Lembaga Pilihan Raya MLYSA 2026</p>
+</footer>
+
+<script>
+const DEFAULT_PARTIES=[
+{id:1,name:"Parti Rakyat MLYSA",acronym:"PRM",slogan:"Suara Rakyat, Suara Negara"},
+{id:2,name:"Parti Wawasan Negara",acronym:"WARESAN",slogan:"Membina Masa Depan Bersama"},
+{id:3,name:"Parti Sejahtera Pembangunan",acronym:"PSP",slogan:"Bersama Membina Kemajuan"}
+];
+
+let parties=JSON.parse(localStorage.getItem("parties")||"null")||DEFAULT_PARTIES;
+let votes=JSON.parse(localStorage.getItem("votes")||"[]");
+let used=JSON.parse(localStorage.getItem("used")||"[]");
+let verified=null,selected=null;
+let token=makeToken();
+let closing=localStorage.getItem("closing")||"2026-12-31T20:00";
+
+function makeToken(){return "MY-SPR-"+Math.floor(1000000+Math.random()*8999999)}
+function save(){
+localStorage.setItem("parties",JSON.stringify(parties));
+localStorage.setItem("votes",JSON.stringify(votes));
+localStorage.setItem("used",JSON.stringify(used));
+document.getElementById("totalVotes").textContent=votes.length;
+document.getElementById("totalParties").textContent=parties.length;
+}
+function showPage(id,btn){
+["voter","manifesto","admin"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+if(btn)btn.classList.add("active");
+if(id==="manifesto")renderManifesto();
+if(id==="admin")renderAdmin();
+}
+function renderBallot(){
+document.getElementById("auditToken").textContent=token;
+document.getElementById("ballotUsername").textContent="Username Roblox: "+(verified?"@"+verified.username:"Belum disahkan");
+document.getElementById("ballotParties").innerHTML=parties.map((p,i)=>`
+<div class="ballot-row">
+<div><div><b>${i+1}. ${p.name}</b><p>${p.acronym}</p><small>${p.slogan}</small></div></div>
+<div><b>${p.acronym}</b></div>
+<div><button class="stamp ${selected===p.id?"selected":""}" onclick="selectParty(${p.id})">${selected===p.id?"✕":""}</button></div>
+</div>`).join("");
+document.getElementById("submitVote").disabled=!(verified&&selected);
+}
+function selectParty(id){
+if(!verified){document.getElementById("voteMessage").innerHTML='<div class="notice error">Verify your username first.</div>';return}
+selected=id;renderBallot();
+}
+async function verifyUser(){
+const name=document.getElementById("username").value.trim();
+const box=document.getElementById("verification");
+if(!/^[A-Za-z0-9_]{3,20}$/.test(name)){box.innerHTML='<div class="notice error">Invalid Roblox username format.</div>';return}
+if(used.includes(name.toLowerCase())){box.innerHTML='<div class="notice error">This username has already voted.</div>';return}
+box.innerHTML="Verifying...";
+try{
+let response=await fetch("https://users.roblox.com/v1/usernames/users",{
+method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({usernames:[name],excludeBannedUsers:false})
+});
+if(!response.ok)throw Error("Roblox verification unavailable.");
+let data=await response.json();
+if(!data.data||!data.data.length)throw Error("Roblox username not found.");
+verified={username:data.data[0].name,id:data.data[0].id};
+box.innerHTML='<div class="notice">Verified user: @'+verified.username+'</div>';
+renderBallot();
+}catch(e){box.innerHTML='<div class="notice error">'+e.message+'</div>'}
+}
+function submitVote(){
+if(!verified||!selected)return;
+const party=parties.find(p=>p.id===selected);
+if(!party)return;
+if(used.includes(verified.username.toLowerCase()))return;
+const record={token,username:verified.username,party:party.name,partyId:party.id,timestamp:new Date().toISOString()};
+votes.push(record);used.push(verified.username.toLowerCase());save();
+document.getElementById("receiptDetails").innerHTML=
+"Series Ballot: "+token+"<br>Voter: @"+verified.username+"<br>Ballot Choice: "+party.name+"<br>Timestamp UTC: "+record.timestamp;
+document.getElementById("receipt").classList.remove("hidden");
+document.getElementById("voteMessage").innerHTML='<div class="notice">Your ballot has been submitted!</div>';
+if(window.confetti)confetti({particleCount:120,spread:70});
+token=makeToken();verified=null;selected=null;
+document.getElementById("verification").innerHTML="";document.getElementById("username").value="";
+renderBallot();renderAdmin();
+}
+function renderManifesto(){
+document.getElementById("manifestoList").innerHTML=parties.map(p=>`
+<div class="card" style="margin:10px 0">
+<h3>${p.name}</h3><b>${p.acronym}</b>
+<p>${p.slogan}</p>
+<p>Official party manifesto</p>
+</div>`).join("");
+}
+function adminLogin(){
+const email=document.getElementById("adminEmail").value.trim().toLowerCase();
+const pass=document.getElementById("adminPassword").value;
+if(email==="bntlgming@gmail.com"&&pass==="LPR@ADMIN"){
+document.getElementById("login").classList.add("hidden");
+document.getElementById("dashboard").classList.remove("hidden");
+renderAdmin();
+}else document.getElementById("loginMessage").innerHTML='<div class="notice error">Invalid credentials.</div>';
+}
+function renderAdmin(){
+if(document.getElementById("dashboard").classList.contains("hidden"))return;
+const total=votes.length;
+document.getElementById("results").innerHTML=parties.map(p=>{
+const count=votes.filter(v=>v.partyId===p.id).length;
+return `<p><b>${p.name}</b> — ${count} votes</p><div style="height:8px;background:#e2e8f0;border-radius:10px"><div style="height:8px;width:${total?count/total*100:0}%;background:#164e9a;border-radius:10px"></div></div>`;
+}).join("");
+document.getElementById("auditTrail").innerHTML=votes.map(v=>`
+<p>${v.token} | @${v.username} | ${v.party} | ${v.timestamp}</p>`).join("")||"No votes yet.";
+document.getElementById("manageParties").innerHTML=parties.map(p=>`<p>${p.name} (${p.acronym})</p>`).join("");
+}
+function addParty(){
+const name=document.getElementById("partyName").value.trim();
+const acronym=document.getElementById("partyAcronym").value.trim().toUpperCase();
+const slogan=document.getElementById("partySlogan").value.trim();
+if(!name||!acronym)return;
+parties.push({id:Date.now(),name,acronym,slogan});
+save();renderBallot();renderAdmin();
+renderManifesto();
+}
+function exportCSV(){
+const rows=["Token,Username,Party,Timestamp",...votes.map(v=>[v.token,v.username,v.party,v.timestamp].join(","))];
+download("votepulse-results.csv",rows.join("\n"),"text/csv");
+}
+function exportJSON(){download("votepulse-results.json",JSON.stringify({parties,votes},null,2),"application/json")}
+function download(name,data,type){
+const a=document.createElement("a"),url=URL.createObjectURL(new Blob([data],{type}));
+a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);
+}
+function saveClosing(){
+closing=document.getElementById("closingDate").value;
+localStorage.setItem("closing",closing);updateCountdown();
+}
+function updateCountdown(){
+const diff=new Date(closing)-new Date();
+if(diff<=0){document.getElementById("countdown").textContent="POLL CONCLUDED";return}
+const d=Math.floor(diff/86400000),h=Math.floor(diff/3600000)%24,m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60;
+document.getElementById("countdown").textContent=`${d} Days · ${h} Hours · ${m} Mins · ${s} Secs`;
+}
+document.getElementById("closingDate").value=closing;
+save();renderBallot();renderManifesto();updateCountdown();setInterval(updateCountdown,1000);
+</script>
+</body>
+</html>
